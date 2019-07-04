@@ -4,6 +4,7 @@ to colour the given graph with C colours?"). Both training and testing procedure
 we designed our instances with their exact chromatic number (positive ones) and we find their frozen edges to generate a negative
 instance (keeping the previous chromatic number and inserting the frozen edge into the graph).
 
+![](/figures/instances.png)
 
 ### Dependencies
 ```
@@ -37,6 +38,8 @@ foo@bar:~$ python3 neurosat_test.py
 ```
 
 *Obs.: The process of generating train and test instances usually takes very long, so we also made them available [here](https://drive.google.com/open?id=1wu_pgoaWxUAkselmwoXy8DlrMmbpTavM)
+
+![](/figures/heatmap_new.png)
 
 ### Publication
 The results from this experiment are reported in the research paper ["Graph Colouring Meets Deep Learning: Effective Graph Neural Network Models for Combinatorial Problems"](https://arxiv.org/abs/1903.04598) by [H. Lemos](http://dblp.org/pers/hd/l/Lemos:Henrique), [M. Prates](http://dblp.org/pers/hd/p/Prates:Marcelo_O=_R=), [P. Avelar](http://dblp.org/pers/hd/a/Avelar:Pedro_H=_C=),and [L. Lamb](http://dblp.org/pers/hd/l/Lamb:Lu=iacute=s_C=).
