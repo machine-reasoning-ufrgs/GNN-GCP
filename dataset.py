@@ -202,8 +202,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('-samples', default=2**15, type=int, help='How many samples?')
     parser.add_argument('-path', default='adversarial-training', type=str,help='Save path', required=True)
-    parser.add_argument('-nmin', default=20, type=int, help='Min. number of vertices')
-    parser.add_argument('-nmax', default=40, type=int, help='Max. number of vertices')
+    parser.add_argument('-nmin', default=40, type=int, help='Min. number of vertices')
+    parser.add_argument('-nmax', default=60, type=int, help='Max. number of vertices')
     parser.add_argument('--train', action='store_true', help='To define the seed')
     
     
