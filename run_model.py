@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 import sys, os, time, random, argparse, timeit
 import tensorflow as tf
 import numpy as np
@@ -17,7 +18,6 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 def run_training_batch(sess, model, batch, batch_i, epoch_i, time_steps, d, verbose=True):
 
     M, C, VC, cn_exists, n_vertices, n_edges, f = batch
-
     #Generate colors embeddings
     ncolors = np.sum(C)
     #We define the colors embeddings outside, randomly. They are not learnt by the GNN (that can be improved)
@@ -81,7 +81,7 @@ def run_test_batch(sess, model, batch, batch_i, time_steps, logfile):
       M_t = M[n_acc:n_acc+n, n_acc:n_acc+n]
       c = c if i % 2 == 0 else c + 1
       
-      gnnpred = tabupred = greedypred = 999
+      gnnpred = tabupred = 999
       for j in range(2, c + 5):
         n_colors_t = j
         cn_exists_t = 1 if n_colors_t >= c else 0
@@ -115,7 +115,7 @@ def run_test_batch(sess, model, batch, batch_i, time_steps, logfile):
         tabu_sol = 0 if tabu_solution is None else 1
         tabupred = n_colors_t if tabu_sol == 1 and n_colors_t < tabupred else tabupred
       #end for
-      logfile.write('{batch_i} {i} {n} {m} {conn} {tstloss} {tstacc} {cn_exists} {c} {gnnpred} {prediction} {tabupred}\n'.format(
+      logfile.write('{batch_i} {i} {n} {m} {conn} {tstloss} {tstacc} {cn_exists} {c} {gnnpred} {prediction} {gnntime} {tabupred} {tabutime}\n'.format(
         batch_i = batch_i,
         i = i,
         n= n,
@@ -127,7 +127,9 @@ def run_test_batch(sess, model, batch, batch_i, time_steps, logfile):
         tstacc = acc,
         gnnpred = gnnpred, 
         prediction = predictions.item(),
-        tabupred = tabupred
+        gnntime = elapsed_gnn_time,
+        tabupred = tabupred,
+        tabutime = elapsed_tabu_time
         )
       )
       logfile.flush()
@@ -170,7 +172,7 @@ if __name__ == '__main__':
     random.seed(vars(args)['seed'])
     np.random.seed(vars(args)['seed'])
     tf.set_random_seed(vars(args)['seed'])
-
+    seed = str(vars(args)['seed'])
     # Setup parameters
     d                       = vars(args)['d']
     time_steps              = vars(args)['timesteps']
@@ -200,8 +202,11 @@ if __name__ == '__main__':
     GNN = build_network(d)
 
     # Comment the following line to allow GPU use
-    config = tf.ConfigProto( device_count = {'GPU':0})
-    with tf.Session() as sess:
+    config = tf.ConfigProto()
+    #config.gpu_options.per_process_gpu_memory_fraction = 0.5
+    config.gpu_options.allow_growth=True
+
+    with tf.Session(config=config) as sess:
 
         # Initialize global variables
         print('Initializing global variables ... ', flush=True)
@@ -211,9 +216,10 @@ if __name__ == '__main__':
         if load_checkpoints: load_weights(sess,loadpath);
         
         if vars(args)['train']:
-          if not os.path.isdir('training'):
-            os.makedirs('training')
-          with open('training/log.dat','w') as logfile:
+          ptrain = 'training_'+seed
+          if not os.path.isdir(ptrain):
+            os.makedirs(ptrain)
+          with open(ptrain+'/log.dat','w') as logfile:
               # Run for a number of epochs
               for epoch_i in np.arange(epochs_n):
 
@@ -229,7 +235,7 @@ if __name__ == '__main__':
                   summarize_epoch(epoch_i,train_stats['loss'],train_stats['acc'],train_stats['sat'],train_stats['pred'],train=True)
 
                   # Save weights
-                  savepath = 'training/checkpoints/epoch={epoch}'.format(epoch=round(200*np.ceil((epoch_i+1)/200)))
+                  savepath = ptrain+'/checkpoints/epoch={epoch}'.format(epoch=round(200*np.ceil((epoch_i+1)/200)))
                   os.makedirs(savepath, exist_ok=True)
                   if save_checkpoints: save_weights(sess, savepath);
 
@@ -252,12 +258,12 @@ if __name__ == '__main__':
               #end
           #end
         else:
-          if not os.path.isdir('testing'):
-            os.makedirs('testing')
-          with open('testing/log.dat','w') as logfile:
+          if not os.path.isdir('testing_'+seed):
+            os.makedirs('testing_'+seed)
+          with open('testing_'+seed+'/log.dat','w') as logfile:
              
             test_loader.reset()
-            logfile.write('batch instance vertices edges connectivity loss acc sat chrom_number gnnpred gnncertainty tabupred\n')
+            logfile.write('batch instance vertices edges connectivity loss acc sat chrom_number gnnpred gnncertainty gnntime tabupred tabutime\n')
             print('Testing model...', flush=True)
             for (batch_i, batch) in enumerate(test_loader.get_test_batches(1,2048)):
                 run_test_batch(sess, GNN, batch, batch_i, time_steps, logfile)
