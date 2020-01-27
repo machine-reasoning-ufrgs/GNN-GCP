@@ -62,7 +62,7 @@ def run_training_batch(sess, model, batch, batch_i, epoch_i, time_steps, d, verb
 #end
 
 
-def run_test_batch(sess, model, batch, batch_i, time_steps, logfile):
+def run_test_batch(sess, model, batch, batch_i, time_steps, logfile, runtabu=True):
 
     M, n_colors, VC, cn_exists, n_vertices, n_edges, f = batch
     
@@ -109,11 +109,12 @@ def run_test_batch(sess, model, batch, batch_i, time_steps, logfile):
         gnnpred = n_colors_t if predictions > 0.5 and n_colors_t < gnnpred else gnnpred
         
         # run tabucol
-        init_time = timeit.default_timer()
-        tabu_solution = tabucol(M_t, n_colors_t, max_iterations=1000)
-        elapsed_tabu_time  = timeit.default_timer() - init_time
-        tabu_sol = 0 if tabu_solution is None else 1
-        tabupred = n_colors_t if tabu_sol == 1 and n_colors_t < tabupred else tabupred
+        if runtabu:
+          init_time = timeit.default_timer()
+          tabu_solution = tabucol(M_t, n_colors_t, max_iterations=1000)
+          elapsed_tabu_time  = timeit.default_timer() - init_time
+          tabu_sol = 0 if tabu_solution is None else 1
+          tabupred = n_colors_t if tabu_sol == 1 and n_colors_t < tabupred else tabupred
       #end for
       logfile.write('{batch_i} {i} {n} {m} {conn} {tstloss} {tstacc} {cn_exists} {c} {gnnpred} {prediction} {gnntime} {tabupred} {tabutime}\n'.format(
         batch_i = batch_i,
@@ -128,8 +129,8 @@ def run_test_batch(sess, model, batch, batch_i, time_steps, logfile):
         gnnpred = gnnpred, 
         prediction = predictions.item(),
         gnntime = elapsed_gnn_time,
-        tabupred = tabupred,
-        tabutime = elapsed_tabu_time
+        tabupred = tabupred if runtabu else 0,
+        tabutime = elapsed_tabu_time if runtabu else 0
         )
       )
       logfile.flush()
@@ -164,6 +165,7 @@ if __name__ == '__main__':
     parser.add_argument('--load', const=True, default=False, action='store_const', help='Load model checkpoint?')
     parser.add_argument('--save', const=True, default=False, action='store_const', help='Save model?')
     parser.add_argument('--train', const=True, default=False, action='store_const', help='Train?')
+    parser.add_argument('--runtabu', const=True, default=False, action='store_const', help='Run tabucol?')
 
     # Parse arguments from command line
     args = parser.parse_args()
@@ -182,6 +184,7 @@ if __name__ == '__main__':
     loadpath                = vars(args)['loadpath']
     load_checkpoints        = vars(args)['load']
     save_checkpoints        = vars(args)['save']
+    runtabu                 = vars(args)['runtabu']
 
     train_params = {
         'batches_per_epoch': 128
@@ -266,7 +269,7 @@ if __name__ == '__main__':
             logfile.write('batch instance vertices edges connectivity loss acc sat chrom_number gnnpred gnncertainty gnntime tabupred tabutime\n')
             print('Testing model...', flush=True)
             for (batch_i, batch) in enumerate(test_loader.get_test_batches(1,2048)):
-                run_test_batch(sess, GNN, batch, batch_i, time_steps, logfile)
+                run_test_batch(sess, GNN, batch, batch_i, time_steps, logfile,runtabu)
             #end
             logfile.flush()
                   
